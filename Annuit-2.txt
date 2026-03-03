@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+
+<html lang="nl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Lening Calculator"/>
+  <title>Annuïteit Calculator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    :root{
+      --blue:#003F63;--blue2:#005080;--blueL:#EAF2F8;
+      --teal:#007A8A;--green:#2E7D5E;
+      --white:#fff;--bg:#F4F6F8;
+      --bdr:#DDE2E8;--txt:#1A2533;--mut:#6B7785;--lt:#F9FAFB;
+      --r:4px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    html,body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--txt);font-size:15px;line-height:1.55;min-height:100%;}
+
+```
+.topbar{background:var(--blue);height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:200;}
+.tb-brand{display:flex;align-items:center;gap:11px;color:#fff;font-weight:600;font-size:.95rem;}
+.tb-logo{width:32px;height:32px;background:#fff;border-radius:3px;display:grid;place-items:center;}
+.lang-row{display:flex;gap:5px;}
+.lb{background:transparent;border:1.5px solid rgba(255,255,255,.28);border-radius:var(--r);padding:5px 10px;cursor:pointer;font-family:'Inter',sans-serif;font-size:.7rem;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.04em;display:flex;align-items:center;gap:5px;transition:all .15s;}
+.lb.on{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.65);color:#fff;}
+.lb:hover{color:#fff;border-color:rgba(255,255,255,.55);}
+.flag{width:20px;height:13px;border-radius:2px;display:block;}
+
+.screen{display:none;max-width:860px;margin:0 auto;padding:38px 22px 80px;}
+.screen.on{display:block;}
+
+.ph{border-bottom:1px solid var(--bdr);padding-bottom:24px;margin-bottom:30px;}
+.ph-tag{font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin-bottom:7px;}
+.ph-title{font-size:clamp(1.5rem,4vw,2rem);font-weight:700;color:var(--blue);line-height:1.18;}
+.ph-sub{font-size:.87rem;color:var(--mut);margin-top:7px;max-width:500px;}
+
+.bc{display:flex;align-items:center;gap:6px;margin-bottom:24px;font-size:.78rem;}
+.bc-back{background:none;border:none;cursor:pointer;color:var(--blue);font-family:'Inter',sans-serif;font-weight:500;font-size:.78rem;padding:0;transition:opacity .15s;}
+.bc-back:hover{opacity:.65;}
+.bc-sep,.bc-cur{color:var(--mut);}
+
+.cg{display:grid;grid-template-columns:repeat(auto-fit,minmax(275px,1fr));gap:14px;margin-top:26px;}
+.cc{background:var(--white);border:1.5px solid var(--bdr);border-radius:var(--r);padding:26px 22px 50px;text-align:left;cursor:pointer;position:relative;transition:border-color .15s,box-shadow .15s;width:100%;}
+.cc:hover{border-color:var(--blue);box-shadow:0 3px 14px rgba(0,63,99,.1);}
+.cc-num{font-size:.66rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--bdr);margin-bottom:13px;}
+.cc-icon{width:42px;height:42px;background:var(--blueL);border-radius:var(--r);display:grid;place-items:center;margin-bottom:16px;color:var(--blue);}
+.cc-title{font-size:.98rem;font-weight:600;color:var(--blue);margin-bottom:7px;}
+.cc-desc{font-size:.83rem;color:var(--mut);line-height:1.55;}
+.cc-arrow{position:absolute;bottom:20px;right:20px;color:var(--blue);font-size:1rem;transition:transform .15s;}
+.cc:hover .cc-arrow{transform:translateX(4px);}
+
+.fc{background:var(--white);border:1.5px solid var(--bdr);border-radius:var(--r);padding:24px 22px;margin-bottom:20px;}
+.fc-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);padding-bottom:13px;border-bottom:1px solid var(--bdr);margin-bottom:18px;}
+.ig{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:13px;}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-size:.77rem;font-weight:500;color:var(--txt);display:flex;align-items:center;gap:5px;}
+.kb{font-size:.6rem;background:var(--blueL);color:var(--blue);padding:1px 6px;border-radius:2px;font-weight:700;}
+.iw{position:relative;}
+.px{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--mut);font-size:.86rem;font-weight:500;pointer-events:none;}
+.field input{width:100%;background:var(--white);border:1.5px solid var(--bdr);border-radius:var(--r);padding:9px 10px 9px 26px;color:var(--txt);font-family:'Inter',sans-serif;font-size:.87rem;outline:none;transition:border-color .15s,box-shadow .15s;-webkit-appearance:none;}
+.field input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(0,63,99,.1);}
+.field input::placeholder{color:#C5CDD6;}
+.err{font-size:.72rem;color:#C0392B;display:none;margin-top:2px;}
+.err.on{display:block;}
+
+.cb{margin-top:20px;padding:10px 26px;border:none;border-radius:var(--r);font-family:'Inter',sans-serif;font-size:.87rem;font-weight:600;color:#fff;cursor:pointer;transition:background .15s;}
+.cb.blue{background:var(--blue);} .cb.blue:hover{background:var(--blue2);}
+.cb.teal{background:var(--teal);} .cb.teal:hover{background:#006675;}
+.pdf-btn{margin-top:13px;width:100%;padding:9px;background:transparent;border:1.5px solid var(--bdr);border-radius:var(--r);font-family:'Inter',sans-serif;font-size:.78rem;font-weight:500;color:var(--blue);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:border-color .15s,background .15s;}
+.pdf-btn:hover{border-color:var(--blue);background:var(--blueL);}
+.sm-btn{margin-top:9px;width:100%;padding:9px;background:transparent;border:1.5px solid var(--bdr);border-radius:var(--r);font-family:'Inter',sans-serif;font-size:.77rem;color:var(--mut);cursor:pointer;transition:border-color .15s,color .15s;}
+.sm-btn:hover{border-color:var(--blue);color:var(--blue);}
+
+.results{animation:fu .3s ease both;}
+@keyframes fu{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.sec-lbl{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);margin-bottom:13px;}
+
+.sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px;}
+.sc{background:var(--white);border:1.5px solid var(--bdr);border-radius:var(--r);padding:15px;}
+.sc.hl{background:var(--blue);border-color:var(--blue);}
+.sc.hl .sl{color:rgba(255,255,255,.55);}
+.sc.hl .sv{color:#fff;}
+.sl{font-size:.68rem;font-weight:500;color:var(--mut);margin-bottom:5px;line-height:1.3;}
+.sv{font-size:1.1rem;font-weight:700;color:var(--blue);}
+.sv.tl{color:var(--teal);} .sv.gn{color:var(--green);}
+
+.vc{background:var(--white);border:1.5px solid var(--bdr);border-radius:var(--r);padding:20px;display:flex;align-items:center;gap:24px;flex-wrap:wrap;margin-bottom:18px;}
+.bg2{flex:2;min-width:175px;}
+.bl-row{font-size:.72rem;color:var(--mut);margin-bottom:8px;}
+.bt{height:7px;background:var(--bg);border-radius:99px;overflow:hidden;display:flex;}
+.bs{height:100%;transition:width .6s ease;}
+.bleg{display:flex;gap:16px;margin-top:10px;flex-wrap:wrap;}
+.bli{display:flex;align-items:center;gap:5px;font-size:.74rem;color:var(--mut);}
+.bld{width:7px;height:7px;border-radius:2px;}
+.blv{font-weight:600;color:var(--txt);}
+
+.rh{background:var(--blue);border-radius:var(--r);padding:22px 24px;margin-bottom:18px;}
+.rh-lbl{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.52);margin-bottom:7px;}
+.rh-amt{font-size:clamp(1.6rem,5vw,2.3rem);font-weight:700;color:#fff;line-height:1;}
+.rh-sub{margin-top:8px;font-size:.78rem;color:rgba(255,255,255,.52);}
+
+.pc{background:var(--white);border:1.5px solid var(--bdr);border-radius:var(--r);padding:17px 20px;margin-bottom:18px;}
+.pt{height:8px;background:var(--bg);border-radius:99px;overflow:hidden;margin:9px 0;}
+.pf{height:100%;background:var(--green);border-radius:99px;transition:width .6s ease;}
+.plr{display:flex;justify-content:space-between;font-size:.72rem;}
+
+.tc{background:var(--white);border:1.5px solid var(--bdr);border-radius:var(--r);overflow:hidden;margin-bottom:9px;}
+.tc-hd{padding:12px 15px;border-bottom:1px solid var(--bdr);font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--mut);}
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{font-size:.67rem;font-weight:600;color:var(--mut);padding:8px 12px;text-align:right;background:var(--lt);border-bottom:1px solid var(--bdr);}
+.tbl th:first-child{text-align:left;}
+.tbl td{padding:7px 12px;text-align:right;border-bottom:1px solid var(--bdr);font-size:.78rem;color:var(--txt);}
+.tbl td:first-child{text-align:left;color:var(--mut);font-weight:500;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:var(--lt);}
+.tbl td.cb2{color:var(--blue);font-weight:500;} .tbl td.ct{color:var(--teal);font-weight:500;}
+
+@media(max-width:540px){.screen{padding:22px 13px 60px;}.topbar{padding:0 14px;}.vc{flex-direction:column;align-items:flex-start;}.sg{grid-template-columns:1fr 1fr;}}
+```
+
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="tb-brand">
+    <div class="tb-logo">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#003F63" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+      </svg>
+    </div>
+    <span data-t="appLabel"></span>
+  </div>
+  <div class="lang-row">
+    <button class="lb on" id="btn-nl" onclick="setLang('nl')">
+      <svg class="flag" viewBox="0 0 900 600"><rect width="900" height="200" fill="#AE1C28"/><rect y="200" width="900" height="200" fill="#fff"/><rect y="400" width="900" height="200" fill="#21468B"/></svg>NL
+    </button>
+    <button class="lb" id="btn-en" onclick="setLang('en')">
+      <svg class="flag" viewBox="0 0 60 30"><rect width="60" height="30" fill="#012169"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#C8102E" stroke-width="4"/><path d="M30,0 V30 M0,15 H60" stroke="#fff" stroke-width="10"/><path d="M30,0 V30 M0,15 H60" stroke="#C8102E" stroke-width="6"/></svg>EN
+    </button>
+    <button class="lb" id="btn-dk" onclick="setLang('dk')">
+      <svg class="flag" viewBox="0 0 37 28"><rect width="37" height="28" fill="#C60C30"/><rect x="11" y="0" width="5" height="28" fill="#fff"/><rect x="0" y="11.5" width="37" height="5" fill="#fff"/></svg>DK
+    </button>
+  </div>
+</div>
+
+<!-- HOME -->
+
+<div id="s-home" class="screen on">
+  <div class="ph">
+    <div class="ph-tag" data-t="appLabel"></div>
+    <h1 class="ph-title"><span data-t="homeTitle1"></span> <span data-t="homeTitle2"></span></h1>
+    <p class="ph-sub" data-t="homeSub"></p>
+  </div>
+  <div class="cg">
+    <button class="cc" onclick="go('maandlast')">
+      <div class="cc-num" data-t="opt1Num"></div>
+      <div class="cc-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div>
+      <div class="cc-title" data-t="opt1Title"></div>
+      <div class="cc-desc" data-t="opt1Desc"></div>
+      <div class="cc-arrow">→</div>
+    </button>
+    <button class="cc" onclick="go('restschuld')">
+      <div class="cc-num" data-t="opt2Num"></div>
+      <div class="cc-icon"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+      <div class="cc-title" data-t="opt2Title"></div>
+      <div class="cc-desc" data-t="opt2Desc"></div>
+      <div class="cc-arrow">→</div>
+    </button>
+  </div>
+</div>
+
+<!-- MAANDLAST -->
+
+<div id="s-maandlast" class="screen">
+  <div class="bc">
+    <button class="bc-back" onclick="go('home')">← <span data-t="backHome"></span></button>
+    <span class="bc-sep">/</span><span class="bc-cur" data-t="opt1Title"></span>
+  </div>
+  <div class="ph">
+    <div class="ph-tag" data-t="ml_label"></div>
+    <h1 class="ph-title" data-t="opt1Title"></h1>
+    <p class="ph-sub" data-t="ml_sub"></p>
+  </div>
+  <div class="fc">
+    <div class="fc-title" data-t="formTitle"></div>
+    <div class="ig">
+      <div class="field"><label data-t="f_loanAmount"></label><div class="iw"><span class="px">€</span><input type="number" id="ml-a" placeholder="250000" inputmode="decimal"/></div><span class="err" id="ml-ea" data-t="err_amount"></span></div>
+      <div class="field"><label data-t="f_rate"></label><div class="iw"><span class="px">%</span><input type="number" id="ml-r" placeholder="4.5" step="0.01" inputmode="decimal"/></div><span class="err" id="ml-er" data-t="err_rate"></span></div>
+      <div class="field"><label data-t="f_term"></label><div class="iw"><span class="px">#</span><input type="number" id="ml-t" placeholder="360" inputmode="numeric"/></div><span class="err" id="ml-et" data-t="err_term"></span></div>
+    </div>
+    <button class="cb blue" onclick="doML()" data-t="calcBtn"></button>
+  </div>
+  <div id="ml-res" class="results" style="display:none">
+    <div class="sec-lbl" data-t="summary"></div>
+    <div class="sg">
+      <div class="sc hl"><div class="sl" data-t="s_monthly"></div><div class="sv" id="ml-sm"></div></div>
+      <div class="sc"><div class="sl" data-t="s_total"></div><div class="sv" id="ml-st"></div></div>
+      <div class="sc"><div class="sl" data-t="s_interest"></div><div class="sv tl" id="ml-si"></div></div>
+      <div class="sc"><div class="sl" data-t="s_principal"></div><div class="sv gn" id="ml-sp"></div></div>
+    </div>
+    <div class="vc">
+      <svg id="ml-donut" viewBox="0 0 120 120" width="105" height="105" style="flex-shrink:0"></svg>
+      <div class="bg2">
+        <div class="bl-row" data-t="s_dist"></div>
+        <div class="bt"><div class="bs" id="ml-bp" style="background:var(--blue)"></div><div class="bs" id="ml-bi" style="background:var(--teal)"></div></div>
+        <div class="bleg">
+          <div class="bli"><div class="bld" style="background:var(--blue)"></div><span data-t="s_repay"></span>:&nbsp;<span class="blv" id="ml-lp"></span></div>
+          <div class="bli"><div class="bld" style="background:var(--teal)"></div><span data-t="s_rente"></span>:&nbsp;<span class="blv" id="ml-li"></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="tc">
+      <div class="tc-hd" data-t="schedule"></div>
+      <table class="tbl"><thead><tr><th data-t="th_month" style="text-align:left"></th><th data-t="th_payment"></th><th data-t="th_repay"></th><th data-t="th_interest"></th><th data-t="th_balance"></th></tr></thead><tbody id="ml-tb"></tbody></table>
+    </div>
+    <button class="sm-btn" id="ml-smb" onclick="toggleML()" style="display:none"></button>
+    <button class="pdf-btn" onclick="makePDF('ml')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span data-t="pdfBtn"></span>
+    </button>
+  </div>
+</div>
+
+<!-- RESTSCHULD -->
+
+<div id="s-restschuld" class="screen">
+  <div class="bc">
+    <button class="bc-back" onclick="go('home')">← <span data-t="backHome"></span></button>
+    <span class="bc-sep">/</span><span class="bc-cur" data-t="opt2Title"></span>
+  </div>
+  <div class="ph">
+    <div class="ph-tag" data-t="rs_label"></div>
+    <h1 class="ph-title" data-t="opt2Title"></h1>
+    <p class="ph-sub" data-t="rs_sub"></p>
+  </div>
+  <div class="fc">
+    <div class="fc-title" data-t="formTitle"></div>
+    <div class="ig">
+      <div class="field"><label data-t="f_origLoan"></label><div class="iw"><span class="px">€</span><input type="number" id="rs-a" placeholder="250000" inputmode="decimal"/></div><span class="err" id="rs-ea" data-t="err_amount"></span></div>
+      <div class="field"><label data-t="f_rate"></label><div class="iw"><span class="px">%</span><input type="number" id="rs-r" placeholder="4.5" step="0.01" inputmode="decimal"/></div><span class="err" id="rs-er" data-t="err_rate"></span></div>
+      <div class="field"><label data-t="f_totalTerm"></label><div class="iw"><span class="px">#</span><input type="number" id="rs-t" placeholder="360" inputmode="numeric"/></div><span class="err" id="rs-et" data-t="err_term"></span></div>
+      <div class="field"><label><span data-t="f_elapsed"></span>&nbsp;<span class="kb" data-t="keyBadge"></span></label><div class="iw"><span class="px">↓</span><input type="number" id="rs-e" placeholder="84" inputmode="numeric"/></div><span class="err" id="rs-ee"></span></div>
+    </div>
+    <button class="cb teal" onclick="doRS()" data-t="restBtn"></button>
+  </div>
+  <div id="rs-res" class="results" style="display:none">
+    <div class="rh">
+      <div class="rh-lbl" data-t="rs_current"></div>
+      <div class="rh-amt" id="rs-amt"></div>
+      <div class="rh-sub" id="rs-sub"></div>
+    </div>
+    <div class="pc">
+      <div class="sec-lbl" data-t="rs_progress"></div>
+      <div class="pt"><div class="pf" id="rs-pf"></div></div>
+      <div class="plr"><span id="rs-pl" style="color:var(--green);font-weight:600"></span><span id="rs-pr" style="color:var(--teal);font-weight:600"></span></div>
+    </div>
+    <div class="sg">
+      <div class="sc"><div class="sl" data-t="rs_paidPrincipal"></div><div class="sv gn" id="rs-pp"></div></div>
+      <div class="sc"><div class="sl" data-t="rs_paidInterest"></div><div class="sv tl" id="rs-pi"></div></div>
+      <div class="sc"><div class="sl" data-t="rs_paidTotal"></div><div class="sv" id="rs-pt"></div></div>
+      <div class="sc hl"><div class="sl" data-t="rs_remaining2"></div><div class="sv" id="rs-rm"></div></div>
+    </div>
+    <div class="vc">
+      <svg id="rs-donut" viewBox="0 0 120 120" width="105" height="105" style="flex-shrink:0"></svg>
+      <div class="bg2">
+        <div class="bl-row" data-t="rs_distPaid"></div>
+        <div class="bt"><div class="bs" id="rs-bp" style="background:var(--blue)"></div><div class="bs" id="rs-bi" style="background:var(--teal)"></div></div>
+        <div class="bleg">
+          <div class="bli"><div class="bld" style="background:var(--blue)"></div><span data-t="rs_repayLabel"></span>:&nbsp;<span class="blv" id="rs-lp"></span></div>
+          <div class="bli"><div class="bld" style="background:var(--teal)"></div><span data-t="rs_interestLabel"></span>:&nbsp;<span class="blv" id="rs-li"></span></div>
+        </div>
+      </div>
+    </div>
+    <button class="pdf-btn" onclick="makePDF('rs')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span data-t="pdfBtn"></span>
+    </button>
+  </div>
+</div>
+
+<script>
+const T={
+  nl:{appLabel:"Annuïteit Calculator",homeTitle1:"Wat wil je",homeTitle2:"berekenen?",homeSub:"Kies een van de twee opties om verder te gaan.",backHome:"Overzicht",opt1Num:"01",opt1Title:"Bereken maandlast",opt1Desc:"Bereken je vaste maandelijkse betaling op basis van leenbedrag, rente en looptijd.",opt2Num:"02",opt2Title:"Bereken restschuld",opt2Desc:"Bereken hoeveel er nog openstaat na een aantal betalingen, inclusief een overzicht van betaalde rente en aflossing.",ml_label:"Optie 01",ml_sub:"Vaste maandelijkse betaling — rente daalt, aflossing stijgt elke maand.",formTitle:"Leninggegevens invoeren",f_loanAmount:"Leenbedrag",f_rate:"Jaarlijkse rente",f_term:"Looptijd (maanden)",f_elapsed:"Al betaalde maanden",f_origLoan:"Oorspronkelijk leenbedrag",f_totalTerm:"Totale looptijd (maanden)",err_amount:"Voer een geldig bedrag in",err_rate:"Voer een geldige rente in",err_term:"Voer een geldig aantal maanden in",err_elapsed:"Voer een geldig aantal maanden in",err_elapsed2:"Moet kleiner zijn dan de totale looptijd",calcBtn:"Berekenen",restBtn:"Berekenen",summary:"Samenvatting",s_monthly:"Maandlast",s_total:"Totaal terug te betalen",s_interest:"Totale rente",s_principal:"Hoofdsom",s_dist:"Verdeling totale kosten",s_repay:"Hoofdsom",s_rente:"Rente",schedule:"Aflossingsschema",th_month:"Maand",th_payment:"Betaling",th_repay:"Aflossing",th_interest:"Rente",th_balance:"Restschuld",showMore:n=>`Alle ${n} maanden tonen`,showLess:"Minder tonen",pdfBtn:"Downloaden als PDF",rs_label:"Optie 02",rs_sub:"Vul je leninggegevens in en geef aan hoeveel maanden je al hebt betaald.",keyBadge:"Sleutel",rs_current:"Huidige restschuld",rs_remaining:(m,p)=>`Nog ${m} maanden · ${p}/maand`,rs_progress:"Voortgang aflossing",rs_paidOff:(pct,amt)=>`Afgelost: ${pct}% (${amt})`,rs_open:(pct,amt)=>`Open: ${pct}% (${amt})`,rs_paidPrincipal:"Afgelost (hoofdsom)",rs_paidInterest:"Betaalde rente",rs_paidTotal:"Totaal betaald",rs_remaining2:"Resterende looptijd",rs_mnd:"mnd",rs_distPaid:"Verdeling betaald bedrag",rs_repayLabel:"Aflossing hoofdsom",rs_interestLabel:"Betaalde rente",donutLabel:"RENTE",page:"Pagina",of:"van"},
+  en:{appLabel:"Annuity Calculator",homeTitle1:"What would you like",homeTitle2:"to calculate?",homeSub:"Choose one of the two options to continue.",backHome:"Overview",opt1Num:"01",opt1Title:"Calculate monthly payment",opt1Desc:"Calculate your fixed monthly annuity based on loan amount, interest rate and term.",opt2Num:"02",opt2Title:"Calculate remaining debt",opt2Desc:"Calculate how much is still outstanding after a number of payments, including a breakdown of interest and principal paid.",ml_label:"Option 01",ml_sub:"Fixed monthly payment — interest decreases, principal increases each month.",formTitle:"Enter loan details",f_loanAmount:"Loan amount",f_rate:"Annual interest rate",f_term:"Term (months)",f_elapsed:"Months already paid",f_origLoan:"Original loan amount",f_totalTerm:"Total term (months)",err_amount:"Enter a valid amount",err_rate:"Enter a valid interest rate",err_term:"Enter a valid number of months",err_elapsed:"Enter a valid number of months",err_elapsed2:"Must be less than total term",calcBtn:"Calculate",restBtn:"Calculate",summary:"Summary",s_monthly:"Monthly payment",s_total:"Total to repay",s_interest:"Total interest",s_principal:"Principal",s_dist:"Total cost breakdown",s_repay:"Principal",s_rente:"Interest",schedule:"Amortisation schedule",th_month:"Month",th_payment:"Payment",th_repay:"Principal",th_interest:"Interest",th_balance:"Balance",showMore:n=>`Show all ${n} months`,showLess:"Show less",pdfBtn:"Download as PDF",rs_label:"Option 02",rs_sub:"Enter your loan details and indicate how many months you have already paid.",keyBadge:"Key",rs_current:"Current remaining debt",rs_remaining:(m,p)=>`${m} months remaining · ${p}/month`,rs_progress:"Repayment progress",rs_paidOff:(pct,amt)=>`Repaid: ${pct}% (${amt})`,rs_open:(pct,amt)=>`Open: ${pct}% (${amt})`,rs_paidPrincipal:"Principal repaid",rs_paidInterest:"Interest paid",rs_paidTotal:"Total paid",rs_remaining2:"Remaining term",rs_mnd:"mo",rs_distPaid:"Breakdown of amount paid",rs_repayLabel:"Principal repaid",rs_interestLabel:"Interest paid",donutLabel:"INTEREST",page:"Page",of:"of"},
+  dk:{appLabel:"Annuitetsberegner",homeTitle1:"Hvad vil du",homeTitle2:"beregne?",homeSub:"Vælg en af de to muligheder for at fortsætte.",backHome:"Oversigt",opt1Num:"01",opt1Title:"Beregn månedlig ydelse",opt1Desc:"Beregn din faste månedlige annuitetsydelse baseret på lånebeløb, rente og løbetid.",opt2Num:"02",opt2Title:"Beregn restgæld",opt2Desc:"Beregn hvor meget der stadig udestår efter et antal betalinger, inkl. oversigt over betalt rente og afdrag.",ml_label:"Mulighed 01",ml_sub:"Fast månedlig ydelse — renten falder, afdraget stiger hver måned.",formTitle:"Indtast låneoplysninger",f_loanAmount:"Lånebeløb",f_rate:"Årlig rente",f_term:"Løbetid (måneder)",f_elapsed:"Allerede betalte måneder",f_origLoan:"Oprindeligt lånebeløb",f_totalTerm:"Samlet løbetid (måneder)",err_amount:"Indtast et gyldigt beløb",err_rate:"Indtast en gyldig rente",err_term:"Indtast et gyldigt antal måneder",err_elapsed:"Indtast et gyldigt antal måneder",err_elapsed2:"Skal være mindre end den samlede løbetid",calcBtn:"Beregn",restBtn:"Beregn",summary:"Oversigt",s_monthly:"Månedlig ydelse",s_total:"Samlet tilbagebetaling",s_interest:"Samlet rente",s_principal:"Hovedstol",s_dist:"Fordeling af samlede omkostninger",s_repay:"Afdrag",s_rente:"Rente",schedule:"Afdragsplan",th_month:"Måned",th_payment:"Ydelse",th_repay:"Afdrag",th_interest:"Rente",th_balance:"Restgæld",showMore:n=>`Vis alle ${n} måneder`,showLess:"Vis færre",pdfBtn:"Download som PDF",rs_label:"Mulighed 02",rs_sub:"Indtast dine låneoplysninger og angiv hvor mange måneder du allerede har betalt.",keyBadge:"Nøgle",rs_current:"Aktuel restgæld",rs_remaining:(m,p)=>`${m} måneder tilbage · ${p}/md.`,rs_progress:"Afdragsfremskridt",rs_paidOff:(pct,amt)=>`Afdraget: ${pct}% (${amt})`,rs_open:(pct,amt)=>`Udestår: ${pct}% (${amt})`,rs_paidPrincipal:"Afdraget (hovedstol)",rs_paidInterest:"Betalt rente",rs_paidTotal:"Samlet betalt",rs_remaining2:"Resterende løbetid",rs_mnd:"md.",rs_distPaid:"Fordeling af betalt beløb",rs_repayLabel:"Afdrag på hovedstol",rs_interestLabel:"Betalt rente",donutLabel:"RENTE",page:"Side",of:"af"}
+};
+let lang='nl',MLR=null,RSR=null,MLP={},RSP={},MLshow=false;
+const fNL=n=>new Intl.NumberFormat('nl-NL',{style:'currency',currency:'EUR',minimumFractionDigits:2}).format(n);
+const fEN=n=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'EUR',minimumFractionDigits:2}).format(n);
+const fDK=n=>new Intl.NumberFormat('da-DK',{style:'currency',currency:'DKK',minimumFractionDigits:2}).format(n);
+const F=()=>lang==='nl'?fNL:lang==='dk'?fDK:fEN;
+const t=()=>T[lang];
+function setLang(l){lang=l;document.getElementById('btn-nl').classList.toggle('on',l==='nl');document.getElementById('btn-dk').classList.toggle('on',l==='dk');document.getElementById('btn-en').classList.toggle('on',l==='en');tx();if(MLR)renderML();if(RSR)renderRS();}
+function tx(){document.querySelectorAll('[data-t]').forEach(el=>{const v=t()[el.getAttribute('data-t')];if(typeof v==='string')el.textContent=v;});}
+function go(s){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('on'));document.getElementById('s-'+s).classList.add('on');window.scrollTo(0,0);}
+function calc(p,rate,m){const r=rate/100/12,pay=r===0?p/m:(p*r*Math.pow(1+r,m))/(Math.pow(1+r,m)-1);let bal=p,sch=[],ti=0;for(let i=1;i<=m;i++){const int=bal*r,pr=pay-int;bal=Math.max(0,bal-pr);ti+=int;sch.push({month:i,payment:pay,principal:pr,interest:int,balance:bal});}return{payment:pay,totalInterest:ti,totalPaid:pay*m,schedule:sch};}
+function donut(id,p,i){const el=document.getElementById(id),tot=p+i,pp=p/tot,ip=i/tot,r=46,cx=60,cy=60,c=2*Math.PI*r,pd=pp*c,id2=ip*c;el.innerHTML=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#DDE2E8" stroke-width="12"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#003F63" stroke-width="12" stroke-dasharray="${pd} ${c-pd}" stroke-dashoffset="${c*.25}"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#007A8A" stroke-width="12" stroke-dasharray="${id2} ${c-id2}" stroke-dashoffset="${c*.25-pd}"/><text x="${cx}" y="${cy-4}" text-anchor="middle" fill="#6B7785" font-size="9" font-family="Inter,sans-serif" font-weight="600">${t().donutLabel}</text><text x="${cx}" y="${cy+11}" text-anchor="middle" fill="#003F63" font-size="12" font-family="Inter,sans-serif" font-weight="700">${(ip*100).toFixed(1)}%</text>`;}
+function doML(){const a=parseFloat(document.getElementById('ml-a').value),r=parseFloat(document.getElementById('ml-r').value),m=parseInt(document.getElementById('ml-t').value);let ok=true;const e=(id,s)=>document.getElementById(id).classList.toggle('on',s);e('ml-ea',!a||a<=0);if(!a||a<=0)ok=false;e('ml-er',isNaN(r)||r<0);if(isNaN(r)||r<0)ok=false;e('ml-et',!m||m<=0);if(!m||m<=0)ok=false;if(!ok)return;MLP={a,r,m};MLR=calc(a,r,m);MLshow=false;renderML();document.getElementById('ml-res').style.display='block';}
+function renderML(){if(!MLR)return;const f=F(),R=MLR,P=MLP;document.getElementById('ml-sm').textContent=f(R.payment);document.getElementById('ml-st').textContent=f(R.totalPaid);document.getElementById('ml-si').textContent=f(R.totalInterest);document.getElementById('ml-sp').textContent=f(P.a);const pp=(P.a/R.totalPaid*100).toFixed(1),ip=(R.totalInterest/R.totalPaid*100).toFixed(1);document.getElementById('ml-bp').style.width=pp+'%';document.getElementById('ml-bi').style.width=ip+'%';document.getElementById('ml-lp').textContent=f(P.a)+' ('+pp+'%)';document.getElementById('ml-li').textContent=f(R.totalInterest)+' ('+ip+'%)';donut('ml-donut',P.a,R.totalInterest);renderMLtable();}
+function renderMLtable(){const f=F(),R=MLR,rows=MLshow?R.schedule:R.schedule.slice(0,12);document.getElementById('ml-tb').innerHTML=rows.map(r=>`<tr><td>${r.month}</td><td>${f(r.payment)}</td><td class="cb2">${f(r.principal)}</td><td class="ct">${f(r.interest)}</td><td>${f(r.balance)}</td></tr>`).join('');const b=document.getElementById('ml-smb');if(R.schedule.length>12){b.style.display='block';b.textContent=MLshow?t().showLess:t().showMore(R.schedule.length);}else b.style.display='none';}
+function toggleML(){MLshow=!MLshow;renderMLtable();}
+function doRS(){const a=parseFloat(document.getElementById('rs-a').value),r=parseFloat(document.getElementById('rs-r').value),m=parseInt(document.getElementById('rs-t').value),e=parseInt(document.getElementById('rs-e').value);let ok=true;const err=(id,s,msg)=>{const el=document.getElementById(id);el.classList.toggle('on',s);if(msg)el.textContent=msg;};err('rs-ea',!a||a<=0,t().err_amount);if(!a||a<=0)ok=false;err('rs-er',isNaN(r)||r<0,t().err_rate);if(isNaN(r)||r<0)ok=false;err('rs-et',!m||m<=0,t().err_term);if(!m||m<=0)ok=false;if(!e||e<=0){err('rs-ee',true,t().err_elapsed);ok=false;}else if(e>=m){err('rs-ee',true,t().err_elapsed2);ok=false;}else err('rs-ee',false);if(!ok)return;RSP={a,r,m,e};const full=calc(a,r,m),pr=full.schedule.slice(0,e);RSR={restschuld:full.schedule[e-1]?.balance??0,paidInterest:pr.reduce((s,x)=>s+x.interest,0),paidPrincipal:pr.reduce((s,x)=>s+x.principal,0),paidTotal:full.payment*e,remaining:m-e,payment:full.payment,elapsed:e};renderRS();document.getElementById('rs-res').style.display='block';}
+function renderRS(){if(!RSR)return;const f=F(),R=RSR,P=RSP;document.getElementById('rs-amt').textContent=f(R.restschuld);document.getElementById('rs-sub').textContent=t().rs_remaining(R.remaining,f(R.payment));const pp=(R.paidPrincipal/P.a*100).toFixed(1),op=(100-parseFloat(pp)).toFixed(1);document.getElementById('rs-pf').style.width=pp+'%';document.getElementById('rs-pl').textContent=t().rs_paidOff(pp,f(R.paidPrincipal));document.getElementById('rs-pr').textContent=t().rs_open(op,f(R.restschuld));document.getElementById('rs-pp').textContent=f(R.paidPrincipal);document.getElementById('rs-pi').textContent=f(R.paidInterest);document.getElementById('rs-pt').textContent=f(R.paidTotal);document.getElementById('rs-rm').textContent=R.remaining+' '+t().rs_mnd;document.getElementById('rs-lp').textContent=f(R.paidPrincipal);document.getElementById('rs-li').textContent=f(R.paidInterest);const p2=(R.paidPrincipal/R.paidTotal*100).toFixed(1),i2=(R.paidInterest/R.paidTotal*100).toFixed(1);document.getElementById('rs-bp').style.width=p2+'%';document.getElementById('rs-bi').style.width=i2+'%';donut('rs-donut',R.paidPrincipal,R.paidInterest);}
+function makePDF(mode){if(!window.jspdf){alert('PDF library not loaded.');return;}const{jsPDF}=window.jspdf,f=F(),tl=t(),doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'}),W=210,mg=18;
+doc.setFillColor(0,63,99);doc.rect(0,0,W,34,'F');doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(255,255,255);doc.text(mode==='ml'?(lang==='nl'?'Annuiteiten Berekening':lang==='dk'?'Annuitetsberegning':'Annuity Calculation'):(lang==='nl'?'Restschuld Berekening':lang==='dk'?'Restgældsberegning':'Remaining Debt Calculation'),mg,14);doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(150,190,215);doc.text((mode==='ml'?(lang==='nl'?'Maandlast overzicht':lang==='dk'?'Månedlig ydelse':'Monthly payment overview'):(lang==='nl'?'Restschuld overzicht':lang==='dk'?'Restgæld oversigt':'Remaining debt overview'))+'  ·  '+new Date().toLocaleDateString(lang==='nl'?'nl-NL':lang==='dk'?'da-DK':'en-GB'),mg,22);doc.setFontSize(7.5);doc.setTextColor(150,190,215);
+if(mode==='ml'){const R=MLR,P=MLP,cW=(W-mg*2)/5;doc.text(`${tl.f_loanAmount}: ${f(P.a)}   |   ${tl.f_rate}: ${P.r}%   |   ${tl.f_term}: ${P.m}`,mg,30);let y=43;const cards=[{l:tl.s_monthly,v:f(R.payment),hi:true},{l:tl.s_total,v:f(R.totalPaid)},{l:tl.s_interest,v:f(R.totalInterest)},{l:tl.s_principal,v:f(P.a)}];const cw=(W-mg*2-9)/4;cards.forEach((c,i)=>{const x=mg+i*(cw+3);doc.setFillColor(c.hi?0:244,c.hi?63:246,c.hi?99:248);doc.roundedRect(x,y,cw,19,1,1,'F');doc.setFontSize(5.5);doc.setFont('helvetica','normal');doc.setTextColor(c.hi?150:107,c.hi?190:119,c.hi?215:133);doc.text(c.l.toUpperCase(),x+4,y+7);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(c.hi?255:0,c.hi?255:63,c.hi?255:99);doc.text(c.v,x+4,y+15);});y+=27;const bW=W-mg*2,pP=P.a/R.totalPaid;doc.setFillColor(221,226,232);doc.roundedRect(mg,y,bW,4,2,2,'F');doc.setFillColor(0,63,99);doc.roundedRect(mg,y,bW*pP,4,2,2,'F');doc.setFillColor(0,122,138);doc.roundedRect(mg+bW*pP,y,bW*(1-pP),4,0,2,'F');doc.setFontSize(6.5);doc.setFont('helvetica','normal');doc.setTextColor(107,119,133);doc.text(`${tl.s_repay} ${(pP*100).toFixed(1)}%`,mg,y+10);doc.text(`${tl.s_rente} ${((1-pP)*100).toFixed(1)}%`,W-mg,y+10,{align:'right'});y+=17;doc.setFillColor(244,246,248);doc.rect(mg,y,W-mg*2,7,'F');[tl.th_month,tl.th_payment,tl.th_repay,tl.th_interest,tl.th_balance].forEach((h,i)=>{const x=i===0?mg+3:mg+cW*i+cW-3;doc.setFontSize(6);doc.setTextColor(107,119,133);doc.setFont('helvetica','bold');doc.text(h,x,y+4.8,{align:i===0?'left':'right'});});y+=7;R.schedule.forEach((row,idx)=>{if(y>272){doc.addPage();y=20;}if(idx%2===0){doc.setFillColor(249,250,251);doc.rect(mg,y,W-mg*2,7,'F');}const d=[String(row.month),f(row.payment),f(row.principal),f(row.interest),f(row.balance)],cl=[[107,119,133],[26,37,51],[0,63,99],[0,122,138],[107,119,133]];d.forEach((v,i)=>{const x=i===0?mg+3:mg+cW*i+cW-3;doc.setFontSize(6.5);doc.setTextColor(...cl[i]);doc.setFont('helvetica','normal');doc.text(v,x,y+4.8,{align:i===0?'left':'right'});});y+=7;});}
+else{const R=RSR,P=RSP;doc.text(`${tl.f_origLoan}: ${f(P.a)}   |   ${tl.f_rate}: ${P.r}%   |   ${tl.f_totalTerm}: ${P.m}   |   ${tl.f_elapsed}: ${P.e}`,mg,30);let y=43;doc.setFillColor(0,63,99);doc.roundedRect(mg,y,W-mg*2,24,2,2,'F');doc.setFontSize(6.5);doc.setFont('helvetica','normal');doc.setTextColor(150,190,215);doc.text(tl.rs_current.toUpperCase(),mg+7,y+8);doc.setFontSize(18);doc.setFont('helvetica','bold');doc.setTextColor(255,255,255);doc.text(f(R.restschuld),mg+7,y+20);doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(150,190,215);doc.text(tl.rs_remaining(R.remaining,f(R.payment)),W-mg-3,y+20,{align:'right'});y+=32;const bW=W-mg*2,pP=R.paidPrincipal/P.a;doc.setFillColor(221,226,232);doc.roundedRect(mg,y,bW,4,2,2,'F');doc.setFillColor(46,125,94);doc.roundedRect(mg,y,bW*Math.min(pP,1),4,2,2,'F');doc.setFontSize(6.5);doc.setFont('helvetica','normal');doc.setTextColor(46,125,94);doc.text(tl.rs_paidOff((pP*100).toFixed(1),f(R.paidPrincipal)),mg,y+10);doc.setTextColor(0,122,138);doc.text(tl.rs_open(((1-pP)*100).toFixed(1),f(R.restschuld)),W-mg,y+10,{align:'right'});y+=18;const cw=(W-mg*2-9)/4,cards=[{l:tl.rs_paidPrincipal,v:f(R.paidPrincipal)},{l:tl.rs_paidInterest,v:f(R.paidInterest)},{l:tl.rs_paidTotal,v:f(R.paidTotal)},{l:tl.rs_remaining2,v:`${R.remaining} ${tl.rs_mnd}`,hi:true}];cards.forEach((c,i)=>{const x=mg+i*(cw+3);doc.setFillColor(c.hi?0:244,c.hi?63:246,c.hi?99:248);doc.roundedRect(x,y,cw,19,1,1,'F');doc.setFontSize(5.5);doc.setFont('helvetica','normal');doc.setTextColor(c.hi?150:107,c.hi?190:119,c.hi?215:133);doc.text(doc.splitTextToSize(c.l.toUpperCase(),cw-5),x+4,y+6);doc.setFontSize(9);doc.setFont('helvetica','bold');doc.setTextColor(c.hi?255:0,c.hi?255:63,c.hi?255:99);doc.text(c.v,x+4,y+15);});y+=27;doc.setFontSize(7);doc.setFont('helvetica','bold');doc.setTextColor(107,119,133);doc.text(tl.rs_distPaid.toUpperCase(),mg,y);y+=5;const rows=[[tl.rs_repayLabel,f(R.paidPrincipal),`${(R.paidPrincipal/R.paidTotal*100).toFixed(1)}%`],[tl.rs_interestLabel,f(R.paidInterest),`${(R.paidInterest/R.paidTotal*100).toFixed(1)}%`],[tl.rs_paidTotal,f(R.paidTotal),'100.0%']];rows.forEach((row,i)=>{doc.setFillColor(i%2===0?244:249,i%2===0?246:250,i%2===0?248:251);doc.rect(mg,y,W-mg*2,8,'F');doc.setFontSize(7.5);doc.setFont('helvetica',i===2?'bold':'normal');doc.setTextColor(26,37,51);doc.text(row[0],mg+4,y+5.5);doc.setTextColor(0,63,99);doc.text(row[1],W-mg-28,y+5.5,{align:'right'});doc.setTextColor(107,119,133);doc.text(row[2],W-mg-3,y+5.5,{align:'right'});y+=8;});}
+const pc=doc.internal.getNumberOfPages();for(let p=1;p<=pc;p++){doc.setPage(p);doc.setFontSize(6.5);doc.setTextColor(176,184,193);doc.text(`${new Date().toLocaleString(lang==='nl'?'nl-NL':lang==='dk'?'da-DK':'en-GB')}  ·  ${tl.page} ${p} ${tl.of} ${pc}`,W/2,290,{align:'center'});}
+window.open(URL.createObjectURL(doc.output('blob')),'_blank');}
+tx();
+</script>
+
+</body>
+</html>
