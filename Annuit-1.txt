@@ -1,0 +1,628 @@
+import { useState, useEffect } from “react”;
+
+// ── Translations ──────────────────────────────────────────────────────────────
+const T = {
+nl: {
+appLabel: “Annuïteitslening”,
+homeTitle1: “Wat wil je”,
+homeTitle2: “berekenen?”,
+homeSub: “Kies een van de twee opties om verder te gaan.”,
+opt1Num: “01”, opt1Title: “Bereken je maandlast”, opt1Desc: “Vaste annuïteit berekenen op basis van leenbedrag, rente en looptijd.”,
+opt2Num: “02”, opt2Title: “Bereken je restschuld”, opt2Desc: “Hoeveel heb je nog open staan? Zie ook je al betaalde aflossing en rente.”,
+back: “← Terug naar keuze”,
+ml_label: “Optie 01”, ml_title1: “Bereken je”, ml_title2: “maandlast”, ml_sub: “Vaste maandelijkse betaling — rente daalt, aflossing stijgt elke maand.”,
+f_loanAmount: “Leenbedrag”, f_rate: “Jaarlijkse rente”, f_term: “Looptijd (maanden)”, f_elapsed: “Al betaalde maanden”,
+f_origLoan: “Oorspronkelijk leenbedrag”, f_totalTerm: “Totale looptijd (maanden)”,
+err_amount: “Voer een geldig bedrag in”, err_rate: “Voer een geldige rente in”, err_term: “Voer een geldig aantal maanden in”,
+err_elapsed: “Voer een geldig aantal maanden in”, err_elapsed2: “Moet kleiner zijn dan de totale looptijd”,
+calcBtn: “Bereken annuïteit →”, restBtn: “Bereken restschuld →”,
+summary: “Samenvatting”,
+s_monthly: “Maandelijkse betaling”, s_total: “Totaal terugbetaald”, s_interest: “Totale rente”, s_principal: “Hoofdsom”,
+s_dist: “Verdeling totale kosten”, s_repay: “Aflossing”, s_rente: “Rente”,
+schedule: “Aflossingsschema”,
+th_month: “Maand”, th_payment: “Betaling”, th_repay: “Aflossing”, th_interest: “Rente”, th_balance: “Restschuld”,
+showMore: (n) => `▼ Alle ${n} maanden tonen`, showLess: “▲ Minder tonen”,
+pdfBtn: “Download als PDF”,
+rs_label: “Optie 02”, rs_title1: “Bereken je”, rs_title2: “restschuld”, rs_span: “restschuld”,
+rs_sub: “Vul je leninggegevens in en geef aan hoeveel maanden je al hebt betaald.”,
+keyBadge: “Sleutel”,
+rs_result: (n) => `Resultaat na ${n} maanden`,
+rs_current: “Huidige restschuld”,
+rs_remaining: (m, p) => `Nog ${m} maanden te gaan · ${p}/maand`,
+rs_progress: “Voortgang aflossing”,
+rs_paidOff: (pct, amt) => `✓ Afgelost ${pct}% — ${amt}`,
+rs_open: (pct, amt) => `Open ${pct}% — ${amt}`,
+rs_paidPrincipal: “Al afgelost (hoofdsom)”, rs_paidInterest: “Al betaalde rente”,
+rs_paidTotal: “Totaal al betaald”, rs_remaining2: “Resterende looptijd”, rs_mnd: “mnd”,
+rs_distPaid: “Verdeling betaald bedrag”,
+rs_repayLabel: “Aflossing hoofdsom”, rs_interestLabel: “Betaalde rente”,
+donutLabel: “RENTE”,
+},
+en: {
+appLabel: “Annuity Loan”,
+homeTitle1: “What would you like”, homeTitle2: “to calculate?”,
+homeSub: “Choose one of the two options to continue.”,
+opt1Num: “01”, opt1Title: “Calculate monthly payment”, opt1Desc: “Calculate your fixed annuity based on loan amount, interest rate and term.”,
+opt2Num: “02”, opt2Title: “Calculate remaining debt”, opt2Desc: “How much is still outstanding? Also see your paid-off principal and interest.”,
+back: “← Back to menu”,
+ml_label: “Option 01”, ml_title1: “Calculate your”, ml_title2: “monthly payment”, ml_sub: “Fixed monthly payment — interest decreases, principal increases each month.”,
+f_loanAmount: “Loan amount”, f_rate: “Annual interest rate”, f_term: “Term (months)”, f_elapsed: “Months already paid”,
+f_origLoan: “Original loan amount”, f_totalTerm: “Total term (months)”,
+err_amount: “Enter a valid amount”, err_rate: “Enter a valid interest rate”, err_term: “Enter a valid number of months”,
+err_elapsed: “Enter a valid number of months”, err_elapsed2: “Must be less than total term”,
+calcBtn: “Calculate annuity →”, restBtn: “Calculate remaining debt →”,
+summary: “Summary”,
+s_monthly: “Monthly payment”, s_total: “Total repaid”, s_interest: “Total interest”, s_principal: “Principal”,
+s_dist: “Total cost breakdown”, s_repay: “Principal”, s_rente: “Interest”,
+schedule: “Amortisation schedule”,
+th_month: “Month”, th_payment: “Payment”, th_repay: “Principal”, th_interest: “Interest”, th_balance: “Balance”,
+showMore: (n) => `▼ Show all ${n} months`, showLess: “▲ Show less”,
+pdfBtn: “Download as PDF”,
+rs_label: “Option 02”, rs_title1: “Calculate your”, rs_title2: “remaining debt”, rs_span: “remaining debt”,
+rs_sub: “Enter your loan details and indicate how many months you have already paid.”,
+keyBadge: “Key”,
+rs_result: (n) => `Result after ${n} months`,
+rs_current: “Current remaining debt”,
+rs_remaining: (m, p) => `${m} months remaining · ${p}/month`,
+rs_progress: “Repayment progress”,
+rs_paidOff: (pct, amt) => `✓ Repaid ${pct}% — ${amt}`,
+rs_open: (pct, amt) => `Open ${pct}% — ${amt}`,
+rs_paidPrincipal: “Principal repaid”, rs_paidInterest: “Interest paid”,
+rs_paidTotal: “Total paid so far”, rs_remaining2: “Remaining term”, rs_mnd: “mo”,
+rs_distPaid: “Breakdown of amount paid”,
+rs_repayLabel: “Principal repaid”, rs_interestLabel: “Interest paid”,
+donutLabel: “INTEREST”,
+},
+};
+
+// ── Formatters ────────────────────────────────────────────────────────────────
+const fmtNL = (n) => new Intl.NumberFormat(“nl-NL”, { style: “currency”, currency: “EUR”, minimumFractionDigits: 2 }).format(n);
+const fmtEN = (n) => new Intl.NumberFormat(“en-GB”, { style: “currency”, currency: “EUR”, minimumFractionDigits: 2 }).format(n);
+const getFmt = (lang) => lang === “nl” ? fmtNL : fmtEN;
+
+// ── Calc ──────────────────────────────────────────────────────────────────────
+function calcAnnuiteit(principal, annualRate, months) {
+const r = annualRate / 100 / 12;
+const payment = r === 0 ? principal / months : (principal * r * Math.pow(1 + r, months)) / (Math.pow(1 + r, months) - 1);
+let balance = principal;
+const schedule = [];
+let totalInterest = 0;
+for (let i = 1; i <= months; i++) {
+const interest = balance * r;
+const principalPaid = payment - interest;
+balance = Math.max(0, balance - principalPaid);
+totalInterest += interest;
+schedule.push({ month: i, payment, principal: principalPaid, interest, balance });
+}
+return { payment, totalInterest, totalPaid: payment * months, schedule };
+}
+
+// ── jsPDF loader ──────────────────────────────────────────────────────────────
+function useJsPDF() {
+const [jsPDF, setJsPDF] = useState(null);
+useEffect(() => {
+if (window.jspdf) { setJsPDF(() => window.jspdf.jsPDF); return; }
+const s = document.createElement(“script”);
+s.src = “https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js”;
+s.onload = () => setJsPDF(() => window.jspdf.jsPDF);
+document.head.appendChild(s);
+}, []);
+return jsPDF;
+}
+
+// ── PDF builders ──────────────────────────────────────────────────────────────
+function buildMaandlastPDF(JsPDF, params, result, lang) {
+const t = T[lang], fmt = getFmt(lang);
+const doc = new JsPDF({ orientation: “portrait”, unit: “mm”, format: “a4” });
+const W = 210, margin = 18, colW = (W - margin * 2) / 5;
+doc.setFillColor(17, 27, 46); doc.rect(0, 0, W, 38, “F”);
+doc.setFillColor(59, 130, 246); doc.rect(0, 0, 4, 38, “F”);
+doc.setFont(“helvetica”, “bold”); doc.setFontSize(18); doc.setTextColor(241, 245, 249);
+doc.text(lang === “nl” ? “Annuiteiten Berekening” : “Annuity Calculation”, margin, 16);
+doc.setFont(“helvetica”, “normal”); doc.setFontSize(8); doc.setTextColor(74, 90, 114);
+doc.text((lang === “nl” ? “Maandlast overzicht” : “Monthly payment overview”) + “  ·  “ + new Date().toLocaleDateString(lang === “nl” ? “nl-NL” : “en-GB”), margin, 24);
+doc.setFontSize(9); doc.setTextColor(148, 163, 184);
+doc.text(`${t.f_loanAmount}: ${fmt(params.loanAmount)}   |   ${t.f_rate}: ${params.interestRate}%   |   ${t.f_term}: ${params.term}`, margin, 32);
+let y = 48;
+const cards = [
+{ label: t.s_monthly, value: fmt(result.payment), color: [59, 130, 246] },
+{ label: t.s_total, value: fmt(result.totalPaid), color: [241, 245, 249] },
+{ label: t.s_interest, value: fmt(result.totalInterest), color: [245, 158, 11] },
+{ label: t.s_principal, value: fmt(params.loanAmount), color: [16, 185, 129] },
+];
+const cw = (W - margin * 2 - 9) / 4;
+cards.forEach((c, i) => {
+const x = margin + i * (cw + 3);
+doc.setFillColor(17, 27, 46); doc.roundedRect(x, y, cw, 22, 2, 2, “F”);
+doc.setFontSize(6.5); doc.setTextColor(74, 90, 114); doc.setFont(“helvetica”, “normal”);
+doc.text(c.label.toUpperCase(), x + 4, y + 7);
+doc.setFontSize(10); doc.setTextColor(…c.color); doc.setFont(“helvetica”, “bold”);
+doc.text(c.value, x + 4, y + 17);
+});
+y += 30;
+const barW = W - margin * 2, pPct = params.loanAmount / result.totalPaid;
+doc.setFillColor(26, 37, 53); doc.roundedRect(margin, y, barW, 5, 2, 2, “F”);
+doc.setFillColor(59, 130, 246); doc.roundedRect(margin, y, barW * pPct, 5, 2, 2, “F”);
+doc.setFillColor(245, 158, 11); doc.roundedRect(margin + barW * pPct, y, barW * (1 - pPct), 5, 0, 2, “F”);
+doc.setFontSize(7); doc.setTextColor(74, 90, 114); doc.setFont(“helvetica”, “normal”);
+doc.text(`${t.s_repay} ${(pPct * 100).toFixed(1)}%`, margin, y + 11);
+doc.text(`${t.s_rente} ${((1 - pPct) * 100).toFixed(1)}%`, W - margin, y + 11, { align: “right” });
+y += 18;
+doc.setFillColor(17, 27, 46); doc.rect(margin, y, W - margin * 2, 8, “F”);
+const headers = [t.th_month, t.th_payment, t.th_repay, t.th_interest, t.th_balance];
+const aligns = [“left”, “right”, “right”, “right”, “right”];
+headers.forEach((h, i) => {
+const x = i === 0 ? margin + 3 : margin + colW * i + colW - 3;
+doc.setFontSize(6.5); doc.setTextColor(74, 90, 114); doc.setFont(“helvetica”, “bold”);
+doc.text(h, x, y + 5.5, { align: aligns[i] });
+});
+y += 8;
+result.schedule.forEach((row, idx) => {
+if (y > 272) { doc.addPage(); y = 20; }
+if (idx % 2 === 0) { doc.setFillColor(11, 17, 32); doc.rect(margin, y, W - margin * 2, 7, “F”); }
+const rowData = [String(row.month), fmt(row.payment), fmt(row.principal), fmt(row.interest), fmt(row.balance)];
+const colors = [[74, 90, 114], [241, 245, 249], [59, 130, 246], [245, 158, 11], [148, 163, 184]];
+rowData.forEach((val, i) => {
+const x = i === 0 ? margin + 3 : margin + colW * i + colW - 3;
+doc.setFontSize(7); doc.setTextColor(…colors[i]); doc.setFont(“helvetica”, “normal”);
+doc.text(val, x, y + 5, { align: aligns[i] });
+});
+y += 7;
+});
+const pageCount = doc.internal.getNumberOfPages();
+for (let p = 1; p <= pageCount; p++) {
+doc.setPage(p); doc.setFontSize(7); doc.setTextColor(38, 50, 68);
+doc.text(`${new Date().toLocaleString(lang === "nl" ? "nl-NL" : "en-GB")}  ·  ${lang === "nl" ? "Pagina" : "Page"} ${p} ${lang === "nl" ? "van" : "of"} ${pageCount}`, W / 2, 290, { align: “center” });
+}
+const blob = doc.output(“blob”);
+window.open(URL.createObjectURL(blob), “_blank”);
+}
+
+function buildRestschuldPDF(JsPDF, params, result, lang) {
+const t = T[lang], fmt = getFmt(lang);
+const doc = new JsPDF({ orientation: “portrait”, unit: “mm”, format: “a4” });
+const W = 210, margin = 18;
+doc.setFillColor(17, 27, 46); doc.rect(0, 0, W, 38, “F”);
+doc.setFillColor(245, 158, 11); doc.rect(0, 0, 4, 38, “F”);
+doc.setFont(“helvetica”, “bold”); doc.setFontSize(18); doc.setTextColor(241, 245, 249);
+doc.text(lang === “nl” ? “Restschuld Berekening” : “Remaining Debt Calculation”, margin, 16);
+doc.setFont(“helvetica”, “normal”); doc.setFontSize(8); doc.setTextColor(74, 90, 114);
+doc.text((lang === “nl” ? “Restschuld overzicht” : “Remaining debt overview”) + “  ·  “ + new Date().toLocaleDateString(lang === “nl” ? “nl-NL” : “en-GB”), margin, 24);
+doc.setFontSize(9); doc.setTextColor(148, 163, 184);
+doc.text(`${t.f_loanAmount}: ${fmt(params.loanAmount)}   |   ${t.f_rate}: ${params.interestRate}%   |   ${t.f_term}: ${params.term}   |   ${t.f_elapsed}: ${params.monthsElapsed}`, margin, 32);
+let y = 48;
+doc.setFillColor(17, 27, 46); doc.setDrawColor(42, 58, 80); doc.roundedRect(margin, y, W - margin * 2, 28, 3, 3, “FD”);
+doc.setFillColor(245, 158, 11); doc.rect(margin, y, 3, 28, “F”);
+doc.setFontSize(8); doc.setTextColor(74, 90, 114); doc.text(t.rs_current.toUpperCase(), margin + 8, y + 9);
+doc.setFontSize(22); doc.setTextColor(245, 158, 11); doc.setFont(“helvetica”, “bold”);
+doc.text(fmt(result.restschuld), margin + 8, y + 22);
+doc.setFontSize(8); doc.setTextColor(74, 90, 114); doc.setFont(“helvetica”, “normal”);
+doc.text(t.rs_remaining(result.remaining, fmt(result.payment)), W - margin - 3, y + 22, { align: “right” });
+y += 36;
+const barW = W - margin * 2, paidPct = result.paidPrincipal / params.loanAmount;
+doc.setFillColor(26, 37, 53); doc.roundedRect(margin, y, barW, 6, 2, 2, “F”);
+doc.setFillColor(16, 185, 129); doc.roundedRect(margin, y, barW * Math.min(paidPct, 1), 6, 2, 2, “F”);
+doc.setFontSize(7); doc.setTextColor(16, 185, 129);
+doc.text(t.rs_paidOff((paidPct * 100).toFixed(1), fmt(result.paidPrincipal)), margin, y + 12);
+doc.setTextColor(245, 158, 11);
+doc.text(t.rs_open(((1 - paidPct) * 100).toFixed(1), fmt(result.restschuld)), W - margin, y + 12, { align: “right” });
+y += 20;
+const cards = [
+{ label: t.rs_paidPrincipal, value: fmt(result.paidPrincipal), color: [16, 185, 129] },
+{ label: t.rs_paidInterest, value: fmt(result.paidInterest), color: [245, 158, 11] },
+{ label: t.rs_paidTotal, value: fmt(result.paidTotal), color: [241, 245, 249] },
+{ label: t.rs_remaining2, value: `${result.remaining} ${t.rs_mnd}`, color: [59, 130, 246] },
+];
+const cw = (W - margin * 2 - 9) / 4;
+cards.forEach((c, i) => {
+const x = margin + i * (cw + 3);
+doc.setFillColor(17, 27, 46); doc.roundedRect(x, y, cw, 22, 2, 2, “F”);
+doc.setFontSize(6); doc.setTextColor(74, 90, 114); doc.setFont(“helvetica”, “normal”);
+doc.text(doc.splitTextToSize(c.label.toUpperCase(), cw - 6), x + 4, y + 6);
+doc.setFontSize(9.5); doc.setTextColor(…c.color); doc.setFont(“helvetica”, “bold”);
+doc.text(c.value, x + 4, y + 18);
+});
+y += 32;
+doc.setFontSize(8); doc.setTextColor(74, 90, 114); doc.setFont(“helvetica”, “bold”);
+doc.text(t.rs_distPaid.toUpperCase(), margin, y); y += 6;
+const rows = [
+[t.rs_repayLabel, fmt(result.paidPrincipal), `${((result.paidPrincipal / result.paidTotal) * 100).toFixed(1)}%`],
+[t.rs_interestLabel, fmt(result.paidInterest), `${((result.paidInterest / result.paidTotal) * 100).toFixed(1)}%`],
+[t.rs_paidTotal, fmt(result.paidTotal), “100.0%”],
+];
+const rowColors = [[59, 130, 246], [245, 158, 11], [241, 245, 249]];
+rows.forEach((row, i) => {
+doc.setFillColor(i % 2 === 0 ? 17 : 11, i % 2 === 0 ? 27 : 17, i % 2 === 0 ? 46 : 32);
+doc.rect(margin, y, W - margin * 2, 8, “F”);
+doc.setFontSize(8); doc.setTextColor(…rowColors[i]); doc.setFont(“helvetica”, i === 2 ? “bold” : “normal”);
+doc.text(row[0], margin + 4, y + 5.5);
+doc.text(row[1], W - margin - 30, y + 5.5, { align: “right” });
+doc.text(row[2], W - margin - 3, y + 5.5, { align: “right” });
+y += 8;
+});
+const pageCount = doc.internal.getNumberOfPages();
+for (let p = 1; p <= pageCount; p++) {
+doc.setPage(p); doc.setFontSize(7); doc.setTextColor(38, 50, 68);
+doc.text(`${new Date().toLocaleString(lang === "nl" ? "nl-NL" : "en-GB")}  ·  ${lang === "nl" ? "Pagina" : "Page"} ${p} ${lang === "nl" ? "van" : "of"} ${pageCount}`, W / 2, 290, { align: “center” });
+}
+const blob = doc.output(“blob”);
+window.open(URL.createObjectURL(blob), “_blank”);
+}
+
+// ── Flag SVGs ─────────────────────────────────────────────────────────────────
+function FlagNL() {
+return (
+<svg xmlns=“http://www.w3.org/2000/svg” viewBox=“0 0 900 600” width=“28” height=“19” style={{ borderRadius: 3, display: “block” }}>
+<rect width="900" height="200" fill="#AE1C28" />
+<rect y="200" width="900" height="200" fill="#fff" />
+<rect y="400" width="900" height="200" fill="#21468B" />
+</svg>
+);
+}
+function FlagGB() {
+return (
+<svg xmlns=“http://www.w3.org/2000/svg” viewBox=“0 0 60 30” width=“28” height=“19” style={{ borderRadius: 3, display: “block” }}>
+<rect width="60" height="30" fill="#012169" />
+<path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" strokeWidth="6" />
+<path d="M0,0 L60,30 M60,0 L0,30" stroke="#C8102E" strokeWidth="4" />
+<path d="M30,0 V30 M0,15 H60" stroke="#fff" strokeWidth="10" />
+<path d="M30,0 V30 M0,15 H60" stroke="#C8102E" strokeWidth="6" />
+</svg>
+);
+}
+
+// ── Language Switcher ─────────────────────────────────────────────────────────
+function LangSwitcher({ lang, setLang }) {
+return (
+<div style={{
+position: “fixed”, top: 20, right: 20, zIndex: 999,
+display: “flex”, gap: 6, alignItems: “center”,
+background: “#111b2e”, border: “1px solid #1e2d45”,
+borderRadius: 10, padding: “6px 8px”,
+}}>
+{[“nl”, “en”].map((l) => (
+<button key={l} onClick={() => setLang(l)} title={l === “nl” ? “Nederlands” : “English”} style={{
+background: lang === l ? “#1e2d45” : “transparent”,
+border: lang === l ? “1px solid #3b82f6” : “1px solid transparent”,
+borderRadius: 6, padding: “4px 6px”, cursor: “pointer”,
+display: “flex”, alignItems: “center”, gap: 5,
+transition: “all 0.15s”,
+opacity: lang === l ? 1 : 0.5,
+}}>
+{l === “nl” ? <FlagNL /> : <FlagGB />}
+<span style={{ fontFamily: “‘DM Mono’, monospace”, fontSize: “0.6rem”, letterSpacing: 1, color: lang === l ? “#e2e8f0” : “#4a5a72”, textTransform: “uppercase” }}>
+{l.toUpperCase()}
+</span>
+</button>
+))}
+</div>
+);
+}
+
+// ── Donut Chart ───────────────────────────────────────────────────────────────
+function DonutChart({ principal, interest, donutLabel }) {
+const total = principal + interest, pPct = principal / total, iPct = interest / total;
+const r = 54, circ = 2 * Math.PI * r, pDash = pPct * circ, iDash = iPct * circ;
+return (
+<svg viewBox="0 0 140 140" width="140" height="140">
+<circle cx="70" cy="70" r={r} fill="none" stroke="#1a2535" strokeWidth="18" />
+<circle cx=“70” cy=“70” r={r} fill=“none” stroke=”#3b82f6” strokeWidth=“18” strokeDasharray={`${pDash} ${circ - pDash}`} strokeDashoffset={circ * 0.25} />
+<circle cx=“70” cy=“70” r={r} fill=“none” stroke=”#f59e0b” strokeWidth=“18” strokeDasharray={`${iDash} ${circ - iDash}`} strokeDashoffset={circ * 0.25 - pDash} />
+<text x="70" y="65" textAnchor="middle" fill="#e2e8f0" fontSize="11" fontFamily="monospace">{donutLabel}</text>
+<text x="70" y="82" textAnchor="middle" fill="#f59e0b" fontSize="13" fontFamily="monospace" fontWeight="bold">{(iPct * 100).toFixed(1)}%</text>
+</svg>
+);
+}
+
+// ── PDF Button ────────────────────────────────────────────────────────────────
+function PdfButton({ onClick, color, label }) {
+return (
+<button onClick={onClick} style={{
+marginTop: 20, width: “100%”, padding: “15px 20px”, background: “transparent”,
+border: `1px solid ${color}22`, borderRadius: 10, color, fontFamily: “‘DM Mono’, monospace”,
+fontSize: “0.75rem”, letterSpacing: “2px”, textTransform: “uppercase”, cursor: “pointer”,
+display: “flex”, alignItems: “center”, justifyContent: “center”, gap: 10, transition: “background 0.2s, border-color 0.2s”,
+}}
+onMouseEnter={e => { e.currentTarget.style.background = color + “18”; e.currentTarget.style.borderColor = color; }}
+onMouseLeave={e => { e.currentTarget.style.background = “transparent”; e.currentTarget.style.borderColor = color + “22”; }}
+>
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+</svg>
+{label}
+</button>
+);
+}
+
+// ── Home Screen ───────────────────────────────────────────────────────────────
+function HomeScreen({ onSelect, lang }) {
+const t = T[lang];
+return (
+<div className="page center-page">
+<div className="hero-label">{t.appLabel}</div>
+<h1 className="hero-title">{t.homeTitle1}<br /><span>{t.homeTitle2}</span></h1>
+<p className="hero-sub">{t.homeSub}</p>
+<div className="choice-grid">
+<button className=“choice-card blue-card” onClick={() => onSelect(“maandlast”)}>
+<div className="choice-icon blue-icon">
+<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+<rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" />
+</svg>
+</div>
+<div className="choice-num">{t.opt1Num}</div>
+<div className="choice-title">{t.opt1Title}</div>
+<div className="choice-desc">{t.opt1Desc}</div>
+<div className="choice-arrow">→</div>
+</button>
+<button className=“choice-card amber-card” onClick={() => onSelect(“restschuld”)}>
+<div className="choice-icon amber-icon">
+<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+<polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+</svg>
+</div>
+<div className="choice-num">{t.opt2Num}</div>
+<div className="choice-title">{t.opt2Title}</div>
+<div className="choice-desc">{t.opt2Desc}</div>
+<div className="choice-arrow">→</div>
+</button>
+</div>
+</div>
+);
+}
+
+// ── Maandlast Screen ──────────────────────────────────────────────────────────
+function MaandlastScreen({ onBack, lang }) {
+const t = T[lang], fmt = getFmt(lang);
+const [loanAmount, setLoanAmount] = useState(””);
+const [interestRate, setInterestRate] = useState(””);
+const [term, setTerm] = useState(””);
+const [result, setResult] = useState(null);
+const [errors, setErrors] = useState({});
+const [showAll, setShowAll] = useState(false);
+const JsPDF = useJsPDF();
+
+const validate = () => {
+const e = {};
+if (!loanAmount || isNaN(loanAmount) || +loanAmount <= 0) e.loanAmount = t.err_amount;
+if (!interestRate || isNaN(interestRate) || +interestRate < 0) e.interestRate = t.err_rate;
+if (!term || isNaN(term) || +term <= 0 || !Number.isInteger(+term)) e.term = t.err_term;
+return e;
+};
+
+const handleCalculate = () => {
+const e = validate(); setErrors(e);
+if (Object.keys(e).length) return;
+setShowAll(false);
+setResult(calcAnnuiteit(+loanAmount, +interestRate, +term));
+};
+
+const visibleRows = result ? (showAll ? result.schedule : result.schedule.slice(0, 12)) : [];
+
+return (
+<div className="page">
+<button className="back-btn" onClick={onBack}>{t.back}</button>
+<div className="hero-label">{t.ml_label}</div>
+<h1 className="hero-title">{t.ml_title1}<br /><span>{t.ml_title2}</span></h1>
+<p className="hero-sub">{t.ml_sub}</p>
+<div className="input-section">
+<div className="field">
+<label>{t.f_loanAmount}</label>
+<div className="input-wrap"><span className="prefix blue-prefix">€</span>
+<input type=“number” placeholder=“250000” value={loanAmount} onChange={e => setLoanAmount(e.target.value)} />
+</div>
+{errors.loanAmount && <span className="err-text">{errors.loanAmount}</span>}
+</div>
+<div className="field">
+<label>{t.f_rate}</label>
+<div className="input-wrap"><span className="prefix blue-prefix">%</span>
+<input type=“number” placeholder=“4.5” step=“0.01” value={interestRate} onChange={e => setInterestRate(e.target.value)} />
+</div>
+{errors.interestRate && <span className="err-text">{errors.interestRate}</span>}
+</div>
+<div className="field">
+<label>{t.f_term}</label>
+<div className="input-wrap"><span className="prefix blue-prefix">#</span>
+<input type=“number” placeholder=“360” value={term} onChange={e => setTerm(e.target.value)} />
+</div>
+{errors.term && <span className="err-text">{errors.term}</span>}
+</div>
+</div>
+<button className="calc-btn blue-btn" onClick={handleCalculate}>{t.calcBtn}</button>
+
+```
+  {result && (
+    <div className="results">
+      <div className="section-rule"><span>{t.summary}</span><hr /></div>
+      <div className="stats-row">
+        <div className="stat"><div className="stat-label">{t.s_monthly}</div><div className="stat-val c-blue">{fmt(result.payment)}</div></div>
+        <div className="stat"><div className="stat-label">{t.s_total}</div><div className="stat-val">{fmt(result.totalPaid)}</div></div>
+        <div className="stat"><div className="stat-label">{t.s_interest}</div><div className="stat-val c-amber">{fmt(result.totalInterest)}</div></div>
+        <div className="stat"><div className="stat-label">{t.s_principal}</div><div className="stat-val c-green">{fmt(+loanAmount)}</div></div>
+      </div>
+      <div className="visual-row">
+        <DonutChart principal={+loanAmount} interest={result.totalInterest} donutLabel={t.donutLabel} />
+        <div style={{ flex: 2, minWidth: 200 }}>
+          <div className="bar-track-label">{t.s_dist}</div>
+          <div className="bar-track">
+            <div className="bar-seg" style={{ width: `${(+loanAmount / result.totalPaid) * 100}%`, background: "#3b82f6" }} />
+            <div className="bar-seg" style={{ width: `${(result.totalInterest / result.totalPaid) * 100}%`, background: "#f59e0b" }} />
+          </div>
+          <div className="bar-annotations">
+            <span>{t.s_repay} {((+loanAmount / result.totalPaid) * 100).toFixed(1)}%</span>
+            <span>{t.s_rente} {((result.totalInterest / result.totalPaid) * 100).toFixed(1)}%</span>
+          </div>
+        </div>
+        <div className="legend">
+          <div className="legend-item"><div className="legend-dot" style={{ background: "#3b82f6" }} /><div><div className="legend-text">{t.s_principal}</div><div className="legend-val">{fmt(+loanAmount)}</div></div></div>
+          <div className="legend-item"><div className="legend-dot" style={{ background: "#f59e0b" }} /><div><div className="legend-text">{t.s_interest}</div><div className="legend-val">{fmt(result.totalInterest)}</div></div></div>
+        </div>
+      </div>
+      <div className="table-section">
+        <div className="section-rule" style={{ marginTop: 40 }}><span>{t.schedule}</span><hr /></div>
+        <table className="tbl">
+          <thead><tr><th>{t.th_month}</th><th>{t.th_payment}</th><th>{t.th_repay}</th><th>{t.th_interest}</th><th>{t.th_balance}</th></tr></thead>
+          <tbody>
+            {visibleRows.map(row => (
+              <tr key={row.month}>
+                <td>{row.month}</td><td className="c-white">{fmt(row.payment)}</td>
+                <td className="c-blue">{fmt(row.principal)}</td><td className="c-amber">{fmt(row.interest)}</td>
+                <td>{fmt(row.balance)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {result.schedule.length > 12 && (
+          <button className="show-more" onClick={() => setShowAll(v => !v)}>
+            {showAll ? t.showLess : t.showMore(result.schedule.length)}
+          </button>
+        )}
+      </div>
+      <PdfButton color="#3b82f6" label={t.pdfBtn}
+        onClick={() => JsPDF && buildMaandlastPDF(JsPDF, { loanAmount: +loanAmount, interestRate: +interestRate, term: +term }, result, lang)} />
+    </div>
+  )}
+</div>
+```
+
+);
+}
+
+// ── Restschuld Screen ─────────────────────────────────────────────────────────
+function RestschuldScreen({ onBack, lang }) {
+const t = T[lang], fmt = getFmt(lang);
+const [loanAmount, setLoanAmount] = useState(””);
+const [interestRate, setInterestRate] = useState(””);
+const [term, setTerm] = useState(””);
+const [monthsElapsed, setMonthsElapsed] = useState(””);
+const [result, setResult] = useState(null);
+const [errors, setErrors] = useState({});
+const JsPDF = useJsPDF();
+
+const validate = () => {
+const e = {};
+if (!loanAmount || isNaN(loanAmount) || +loanAmount <= 0) e.loanAmount = t.err_amount;
+if (!interestRate || isNaN(interestRate) || +interestRate < 0) e.interestRate = t.err_rate;
+if (!term || isNaN(term) || +term <= 0 || !Number.isInteger(+term)) e.term = t.err_term;
+if (!monthsElapsed || isNaN(monthsElapsed) || +monthsElapsed <= 0 || !Number.isInteger(+monthsElapsed)) e.monthsElapsed = t.err_elapsed;
+else if (+monthsElapsed >= +term) e.monthsElapsed = t.err_elapsed2;
+return e;
+};
+
+const handleCalculate = () => {
+const e = validate(); setErrors(e);
+if (Object.keys(e).length) return;
+const full = calcAnnuiteit(+loanAmount, +interestRate, +term);
+const elapsed = +monthsElapsed;
+const paidRows = full.schedule.slice(0, elapsed);
+const paidInterest = paidRows.reduce((s, r) => s + r.interest, 0);
+const paidPrincipal = paidRows.reduce((s, r) => s + r.principal, 0);
+const restschuld = full.schedule[elapsed - 1]?.balance ?? 0;
+setResult({ restschuld, paidInterest, paidPrincipal, paidTotal: full.payment * elapsed, remaining: +term - elapsed, payment: full.payment, elapsed });
+};
+
+const remainingPct = result ? ((result.restschuld / +loanAmount) * 100).toFixed(1) : 0;
+const paidPct = result ? (100 - +remainingPct).toFixed(1) : 0;
+
+return (
+<div className="page">
+<button className="back-btn" onClick={onBack}>{t.back}</button>
+<div className="hero-label">{t.rs_label}</div>
+<h1 className="hero-title">{t.rs_title1}<br /><span className="amber-span">{t.rs_title2}</span></h1>
+<p className="hero-sub">{t.rs_sub}</p>
+<div className="input-section four-col">
+<div className="field">
+<label>{t.f_origLoan}</label>
+<div className="input-wrap"><span className="prefix amber-prefix">€</span>
+<input type=“number” placeholder=“250000” value={loanAmount} onChange={e => setLoanAmount(e.target.value)} />
+</div>
+{errors.loanAmount && <span className="err-text">{errors.loanAmount}</span>}
+</div>
+<div className="field">
+<label>{t.f_rate}</label>
+<div className="input-wrap"><span className="prefix amber-prefix">%</span>
+<input type=“number” placeholder=“4.5” step=“0.01” value={interestRate} onChange={e => setInterestRate(e.target.value)} />
+</div>
+{errors.interestRate && <span className="err-text">{errors.interestRate}</span>}
+</div>
+<div className="field">
+<label>{t.f_totalTerm}</label>
+<div className="input-wrap"><span className="prefix amber-prefix">#</span>
+<input type=“number” placeholder=“360” value={term} onChange={e => setTerm(e.target.value)} />
+</div>
+{errors.term && <span className="err-text">{errors.term}</span>}
+</div>
+<div className="field">
+<label>{t.f_elapsed} <span className="key-badge">{t.keyBadge}</span></label>
+<div className="input-wrap"><span className="prefix amber-prefix">↓</span>
+<input type=“number” placeholder=“84” value={monthsElapsed} onChange={e => setMonthsElapsed(e.target.value)} style={{ borderColor: “#92400e” }} />
+</div>
+{errors.monthsElapsed && <span className="err-text">{errors.monthsElapsed}</span>}
+</div>
+</div>
+<button className="calc-btn amber-btn" onClick={handleCalculate}>{t.restBtn}</button>
+
+```
+  {result && (
+    <div className="results">
+      <div className="section-rule"><span>{t.rs_result(result.elapsed)}</span><hr /></div>
+      <div className="restschuld-hero">
+        <div className="stat-label" style={{ marginBottom: 8 }}>{t.rs_current}</div>
+        <div style={{ fontFamily: "'Syne', sans-serif", fontSize: "clamp(2rem,5vw,3rem)", fontWeight: 800, color: "#f59e0b", lineHeight: 1 }}>{fmt(result.restschuld)}</div>
+        <div style={{ marginTop: 10, fontFamily: "'DM Mono', monospace", fontSize: "0.75rem", color: "#4a5a72" }}>{t.rs_remaining(result.remaining, fmt(result.payment))}</div>
+      </div>
+      <div style={{ marginTop: 20 }}>
+        <div className="bar-track-label">{t.rs_progress}</div>
+        <div className="bar-track" style={{ height: 16 }}>
+          <div className="bar-seg" style={{ width: `${paidPct}%`, background: "linear-gradient(90deg,#10b981,#3b82f6)", borderRadius: 99 }} />
+        </div>
+        <div className="bar-annotations">
+          <span style={{ color: "#10b981" }}>{t.rs_paidOff(paidPct, fmt(result.paidPrincipal))}</span>
+          <span style={{ color: "#f59e0b" }}>{t.rs_open(remainingPct, fmt(result.restschuld))}</span>
+        </div>
+      </div>
+      <div className="stats-row" style={{ marginTop: 24 }}>
+        <div className="stat"><div className="stat-label">{t.rs_paidPrincipal}</div><div className="stat-val c-green">{fmt(result.paidPrincipal)}</div></div>
+        <div className="stat"><div className="stat-label">{t.rs_paidInterest}</div><div className="stat-val c-amber">{fmt(result.paidInterest)}</div></div>
+        <div className="stat"><div className="stat-label">{t.rs_paidTotal}</div><div className="stat-val">{fmt(result.paidTotal)}</div></div>
+        <div className="stat"><div className="stat-label">{t.rs_remaining2}</div><div className="stat-val c-blue">{result.remaining} {t.rs_mnd}</div></div>
+      </div>
+      <div className="visual-row" style={{ marginTop: 16 }}>
+        <DonutChart principal={result.paidPrincipal} interest={result.paidInterest} donutLabel={t.donutLabel} />
+        <div className="legend" style={{ flex: 1 }}>
+          <div className="bar-track-label" style={{ marginBottom: 12 }}>{t.rs_distPaid}</div>
+          <div className="legend-item"><div className="legend-dot" style={{ background: "#3b82f6" }} /><div><div className="legend-text">{t.rs_repayLabel}</div><div className="legend-val">{fmt(result.paidPrincipal)}</div></div></div>
+          <div className="legend-item"><div className="legend-dot" style={{ background: "#f59e0b" }} /><div><div className="legend-text">{t.rs_interestLabel}</div><div className="legend-val">{fmt(result.paidInterest)}</div></div></div>
+        </div>
+      </div>
+      <PdfButton color="#f59e0b" label={t.pdfBtn}
+        onClick={() => JsPDF && buildRestschuldPDF(JsPDF, { loanAmount: +loanAmount, interestRate: +interestRate, term: +term, monthsElapsed: +monthsElapsed }, result, lang)} />
+    </div>
+  )}
+</div>
+```
+
+);
+}
+
+// ── App Root ──────────────────────────────────────────────────────────────────
+export default function App() {
+const [screen, setScreen] = useState(“home”);
+const [lang, setLang] = useState(“nl”);
+
+return (
+<>
+<style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap'); *{box-sizing:border-box;margin:0;padding:0;} body{background:#0b1120;} .page{max-width:900px;margin:0 auto;padding:48px 24px 80px;font-family:'DM Sans',sans-serif;color:#e2e8f0;min-height:100vh;} .center-page{display:flex;flex-direction:column;align-items:flex-start;} .hero-label{font-family:'DM Mono',monospace;font-size:0.7rem;letter-spacing:4px;color:#3b82f6;text-transform:uppercase;margin-bottom:12px;} .hero-title{font-family:'Syne',sans-serif;font-size:clamp(2.4rem,6vw,4rem);font-weight:800;line-height:1.05;color:#f1f5f9;} .hero-title span{color:#3b82f6;} .amber-span{color:#f59e0b !important;} .hero-sub{font-size:0.9rem;color:#4a5a72;margin-top:12px;font-weight:300;max-width:460px;line-height:1.6;} .choice-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:48px;width:100%;} .choice-card{background:#111b2e;border:1px solid #1a2535;border-radius:16px;padding:32px 28px 28px;text-align:left;cursor:pointer;transition:border-color 0.2s,transform 0.2s,box-shadow 0.2s;position:relative;overflow:hidden;} .blue-card:hover{border-color:#3b82f6;transform:translateY(-3px);box-shadow:0 12px 40px rgba(59,130,246,0.12);} .amber-card:hover{border-color:#f59e0b;transform:translateY(-3px);box-shadow:0 12px 40px rgba(245,158,11,0.12);} .choice-icon{width:52px;height:52px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;} .blue-icon{background:rgba(59,130,246,0.12);color:#3b82f6;} .amber-icon{background:rgba(245,158,11,0.12);color:#f59e0b;} .choice-num{font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:3px;color:#2a3a50;margin-bottom:8px;} .choice-title{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:700;color:#f1f5f9;margin-bottom:10px;} .choice-desc{font-size:0.82rem;color:#4a5a72;line-height:1.6;font-weight:300;padding-right:28px;} .choice-arrow{position:absolute;bottom:28px;right:28px;font-size:1.2rem;color:#2a3a50;transition:color 0.2s,transform 0.2s;} .blue-card:hover .choice-arrow{color:#3b82f6;transform:translateX(4px);} .amber-card:hover .choice-arrow{color:#f59e0b;transform:translateX(4px);} .back-btn{font-family:'DM Mono',monospace;font-size:0.7rem;letter-spacing:2px;text-transform:uppercase;color:#4a5a72;background:none;border:none;cursor:pointer;margin-bottom:32px;padding:0;transition:color 0.2s;} .back-btn:hover{color:#e2e8f0;} .input-section{margin-top:36px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;} .four-col{grid-template-columns:repeat(auto-fit,minmax(190px,1fr));} .field{display:flex;flex-direction:column;gap:8px;position:relative;} .field label{font-family:'DM Mono',monospace;font-size:0.65rem;letter-spacing:3px;text-transform:uppercase;color:#4a5a72;display:flex;align-items:center;gap:8px;} .input-wrap{position:relative;} .prefix{position:absolute;left:16px;top:50%;transform:translateY(-50%);font-family:'DM Mono',monospace;font-size:0.9rem;pointer-events:none;} .blue-prefix{color:#3b82f6;} .amber-prefix{color:#f59e0b;} .field input{width:100%;background:#111b2e;border:1px solid #1e2d45;border-radius:10px;padding:15px 16px 15px 36px;color:#f1f5f9;font-family:'DM Mono',monospace;font-size:0.95rem;outline:none;transition:border-color 0.2s,box-shadow 0.2s;} .field input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.1);} .field input::placeholder{color:#243044;} .err-text{font-size:0.72rem;color:#ef4444;font-family:'DM Mono',monospace;} .key-badge{font-size:0.55rem;background:rgba(245,158,11,0.15);color:#f59e0b;padding:2px 6px;border-radius:4px;letter-spacing:1px;font-weight:500;} .calc-btn{margin-top:24px;width:100%;padding:17px;border:none;border-radius:10px;font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:#fff;cursor:pointer;letter-spacing:0.5px;transition:opacity 0.2s,transform 0.1s;} .calc-btn:hover{opacity:0.88;transform:translateY(-1px);} .blue-btn{background:#3b82f6;} .amber-btn{background:#d97706;} .results{margin-top:48px;animation:fadeUp 0.4s ease both;} @keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}} .section-rule{display:flex;align-items:center;gap:14px;margin-bottom:24px;} .section-rule span{font-family:'DM Mono',monospace;font-size:0.65rem;letter-spacing:3px;text-transform:uppercase;color:#4a5a72;white-space:nowrap;} .section-rule hr{flex:1;border:none;border-top:1px solid #1a2535;} .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;} .stat{background:#111b2e;border:1px solid #1a2535;border-radius:12px;padding:20px;} .stat-label{font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:3px;text-transform:uppercase;color:#4a5a72;margin-bottom:10px;} .stat-val{font-family:'Syne',sans-serif;font-size:1.35rem;font-weight:700;color:#f1f5f9;line-height:1.1;} .c-blue{color:#3b82f6;}.c-amber{color:#f59e0b;}.c-green{color:#10b981;}.c-white{color:#f1f5f9;} .restschuld-hero{background:#111b2e;border:1px solid #2a3a50;border-left:4px solid #f59e0b;border-radius:12px;padding:28px 32px;} .visual-row{background:#111b2e;border:1px solid #1a2535;border-radius:12px;padding:24px;display:flex;align-items:center;gap:32px;flex-wrap:wrap;} .legend{display:flex;flex-direction:column;gap:14px;} .legend-item{display:flex;align-items:center;gap:12px;} .legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;} .legend-text{font-size:0.8rem;color:#8899aa;} .legend-val{font-family:'DM Mono',monospace;font-size:0.85rem;color:#e2e8f0;margin-top:2px;} .bar-track-label{font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:3px;text-transform:uppercase;color:#4a5a72;margin-bottom:8px;} .bar-track{height:12px;background:#1a2535;border-radius:99px;overflow:hidden;display:flex;} .bar-seg{height:100%;transition:width 0.8s cubic-bezier(.4,0,.2,1);} .bar-annotations{display:flex;justify-content:space-between;margin-top:8px;font-family:'DM Mono',monospace;font-size:0.65rem;color:#4a5a72;} .table-section{margin-top:32px;} .tbl{width:100%;border-collapse:collapse;font-size:0.82rem;} .tbl thead tr{border-bottom:1px solid #1a2535;} .tbl th{font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:2px;text-transform:uppercase;color:#4a5a72;padding:10px 12px;text-align:right;font-weight:400;} .tbl th:first-child{text-align:left;} .tbl td{padding:9px 12px;text-align:right;border-bottom:1px solid #0f1825;color:#8899aa;font-family:'DM Mono',monospace;font-size:0.78rem;} .tbl td:first-child{text-align:left;color:#3b4a5c;} .tbl tr:hover td{background:#111b2e;} .show-more{margin-top:16px;width:100%;padding:12px;background:transparent;border:1px dashed #1e2d45;border-radius:8px;color:#4a5a72;font-family:'DM Mono',monospace;font-size:0.72rem;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:border-color 0.2s,color 0.2s;} .show-more:hover{border-color:#3b82f6;color:#3b82f6;}`}</style>
+
+```
+  <LangSwitcher lang={lang} setLang={setLang} />
+
+  <div style={{ background: "#0b1120", minHeight: "100vh" }}>
+    {screen === "home" && <HomeScreen onSelect={setScreen} lang={lang} />}
+    {screen === "maandlast" && <MaandlastScreen onBack={() => setScreen("home")} lang={lang} />}
+    {screen === "restschuld" && <RestschuldScreen onBack={() => setScreen("home")} lang={lang} />}
+  </div>
+</>
+```
+
+);
+}
